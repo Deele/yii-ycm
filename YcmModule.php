@@ -459,6 +459,12 @@ class YcmModule extends CWebModule
 					'class'=>'span5',
 				);
 				$options=$this->getAttributeOptions($attribute,$options);
+				if (isset($options['resize'])) {
+					unset($options['resize']);
+				}
+				if (isset($options['thumbnails'])) {
+					unset($options['thumbnails']);
+				}
 				if (!$model->isNewRecord && !empty($model->$attribute)) {
 					ob_start();
 					echo '<p>';
@@ -467,6 +473,7 @@ class YcmModule extends CWebModule
 						'type'=>'',
 						'url'=>$model->getFileUrl($attribute),
 					));
+					echo ' <label for="'.$modelName.'_'.$attribute.'_delete" style="display: inline-block;"><input type="checkbox" name="'.$modelName.'['.$attribute.'_delete]'.'" id="'.$modelName.'_'.$attribute.'_delete" style="vertical-align: top;" /> <span class="helper">'.Yii::t('YcmModule.ycm','Delete image').'</span></label>';
 					echo '</p>';
 					$html=ob_get_clean();
 					$options['hint']=$html;
@@ -479,6 +486,12 @@ class YcmModule extends CWebModule
 					'class'=>'span5',
 				);
 				$options=$this->getAttributeOptions($attribute,$options);
+				if (isset($options['resize'])) {
+					unset($options['resize']);
+				}
+				if (isset($options['thumbnails'])) {
+					unset($options['thumbnails']);
+				}
 				if (!$model->isNewRecord && !empty($model->$attribute)) {
 					$modalName='modal-image-'.$attribute;
 					$image=CHtml::image($model->getFileUrl($attribute),Yii::t('YcmModule.ycm','Image'),array(
@@ -499,6 +512,7 @@ class YcmModule extends CWebModule
 							'data-target'=>'#'.$modalName,
 						),
 					));
+					echo ' <label for="'.$modelName.'_'.$attribute.'_delete" style="display: inline-block;"><input type="checkbox" name="'.$modelName.'['.$attribute.'_delete]'.'" id="'.$modelName.'_'.$attribute.'_delete" style="vertical-align: top;" /> <span class="helper">'.Yii::t('YcmModule.ycm','Delete image').'</span></label>';
 					echo '</p>';
 					$html=ob_get_clean();
 					$options['hint']=$html;

@@ -225,6 +225,49 @@ class ModelController extends AdminController
 								array('{file}'=>$path)
 							));
 						}
+						else {
+							if ($widget=='image') {
+								// image postprocessing
+								Yii::import('application.modules.ycm.extensions.EPhpThumb.EPhpThumb');
+								$phpThumb = New EPhpThumb();
+								$phpThumb->init();
+								$attributeOptions = array_slice($this->module->getAttributeOptions($attribute),2);
+								if (!empty($attributeOptions)) {
+									foreach ($attributeOptions as $k => $v) {
+										if ($k == 'resize') {
+											if (is_array($v)) {
+												list($resizeW, $resizeH) = $v;
+												$phpThumb->create($path)
+													->resize($resizeW,$resizeH)
+													->save($path);
+											}
+										}
+										elseif ($k == 'thumbnails') {
+											if (is_array($v)) {
+												foreach ($v as $directory => $size) {
+													if (is_array($size)) {
+														list($resizeW, $resizeH) = $size;
+														$newDir = dirname($path).DIRECTORY_SEPARATOR.$directory;
+														if (!is_dir($newDir)) {
+															if (!mkdir($newDir,$this->module->permissions,true)) {
+																throw new CHttpException(500,Yii::t(
+																	'YcmModule.ycm',
+																	'Could not create folder "{dir}". Make sure "uploads" folder is writable.',
+																	array('{dir}'=>$newDir)
+																));
+															}
+														}
+														$phpThumb->create($path)
+															->resize($resizeW,$resizeH)
+															->save($newDir.DIRECTORY_SEPARATOR.basename($path));
+													}
+												}
+											}
+										}
+									}
+								}
+							}
+						}
 						array_push($paths,$path);
 						$model->$attribute=$fileName;
 					}
@@ -303,30 +346,80 @@ class ModelController extends AdminController
 				$attribute=$column->name;
 				$widget=$this->module->getAttributeWidget($model,$attribute);
 				if ($widget=='file' || $widget=='image') { // file or image
-					$file=CUploadedFile::getInstance($model,$attribute);
-					if ($file instanceof CUploadedFile) {
-						$fileName=trim(md5($attribute.time().uniqid(rand(),true))).'.'.$file->getExtensionName();
-						$attributePath=$this->module->getAttributePath($name,$attribute);
-						if (!is_dir($attributePath)) {
-							if (!mkdir($attributePath,$this->module->permissions,true)) {
+					$deleteInitiated = (isset($_POST[$name][$attribute.'_delete']));
+					if ($deleteInitiated) {
+						$model->deleteFile($attribute);
+						$model->$attribute = '';
+					}
+					else {
+						$file=CUploadedFile::getInstance($model,$attribute);
+						if ($file instanceof CUploadedFile) {
+							$fileName=trim(md5($attribute.time().uniqid(rand(),true))).'.'.$file->getExtensionName();
+							$attributePath=$this->module->getAttributePath($name,$attribute);
+							if (!is_dir($attributePath)) {
+								if (!mkdir($attributePath,$this->module->permissions,true)) {
+									throw new CHttpException(500,Yii::t(
+										'YcmModule.ycm',
+										'Could not create folder "{dir}". Make sure "uploads" folder is writable.',
+										array('{dir}'=>$attributePath)
+									));
+								}
+							}
+							$path=$attributePath.DIRECTORY_SEPARATOR.$fileName;
+							if (file_exists($path) || !$file->saveAs($path)) {
 								throw new CHttpException(500,Yii::t(
 									'YcmModule.ycm',
-									'Could not create folder "{dir}". Make sure "uploads" folder is writable.',
-									array('{dir}'=>$attributePath)
+									'Could not save file or file exists: "{file}".',
+									array('{file}'=>$path)
 								));
 							}
+							else {
+								if ($widget=='image') {
+									// image postprocessing
+									Yii::import('application.modules.ycm.extensions.EPhpThumb.EPhpThumb');
+									$phpThumb = New EPhpThumb();
+									$phpThumb->init();
+									$attributeOptions = array_slice($this->module->getAttributeOptions($attribute),2);
+									if (!empty($attributeOptions)) {
+										foreach ($attributeOptions as $k => $v) {
+											if ($k == 'resize') {
+												if (is_array($v)) {
+													list($resizeW, $resizeH) = $v;
+													$phpThumb->create($path)
+														->resize($resizeW,$resizeH)
+														->save($path);
+												}
+											}
+											elseif ($k == 'thumbnails') {
+												if (is_array($v)) {
+													foreach ($v as $directory => $size) {
+														if (is_array($size)) {
+															list($resizeW, $resizeH) = $size;
+															$newDir = dirname($path).DIRECTORY_SEPARATOR.$directory;
+															if (!is_dir($newDir)) {
+																if (!mkdir($newDir,$this->module->permissions,true)) {
+																	throw new CHttpException(500,Yii::t(
+																		'YcmModule.ycm',
+																		'Could not create folder "{dir}". Make sure "uploads" folder is writable.',
+																		array('{dir}'=>$newDir)
+																	));
+																}
+															}
+															$phpThumb->create($path)
+																->resize($resizeW,$resizeH)
+																->save($newDir.DIRECTORY_SEPARATOR.basename($path));
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							}
+							array_push($paths,$path);
+							array_push($deleteOld,$attribute);
+							$model->$attribute=$fileName;
 						}
-						$path=$attributePath.DIRECTORY_SEPARATOR.$fileName;
-						if (file_exists($path) || !$file->saveAs($path)) {
-							throw new CHttpException(500,Yii::t(
-								'YcmModule.ycm',
-								'Could not save file or file exists: "{file}".',
-								array('{file}'=>$path)
-							));
-						}
-						array_push($paths,$path);
-						array_push($deleteOld,$attribute);
-						$model->$attribute=$fileName;
 					}
 				}
 			}
